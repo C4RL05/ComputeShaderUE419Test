@@ -4,5 +4,22 @@
 
 #include "ComputeShaderTest419.h"
 #include "Modules/ModuleManager.h"
+#include "Interfaces/IPluginManager.h"
+#include "Logging/LogMacros.h"
+#include "Misc/Paths.h"
 
-IMPLEMENT_PRIMARY_GAME_MODULE( FDefaultGameModuleImpl, ComputeShaderTest419, "ComputeShaderTest419" );
+void FComputeShaderTest419Module::StartupModule()
+{
+
+#if (ENGINE_MINOR_VERSION >= 21)    
+	FString ShaderDirectory = FPaths::Combine(FPaths::ProjectDir(), TEXT("Shaders"));
+	AddShaderSourceDirectoryMapping("/Project", ShaderDirectory);
+#endif
+
+}
+
+void FComputeShaderTest419Module::ShutdownModule()
+{
+}
+
+IMPLEMENT_PRIMARY_GAME_MODULE(FComputeShaderTest419Module, ComputeShaderTest419, "ComputeShaderTest419");

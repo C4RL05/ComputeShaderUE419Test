@@ -5,3 +5,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ModuleManager.h"
+
+
+class FComputeShaderTest419Module : public IModuleInterface
+{
+public:
+	virtual void StartupModule() override;
+	virtual void ShutdownModule() override;
+};
