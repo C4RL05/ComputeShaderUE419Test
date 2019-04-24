@@ -13,7 +13,8 @@ ATestComputeShaderActor::ATestComputeShaderActor() {
 // Called when the game starts or when spawned
 void ATestComputeShaderActor::BeginPlay() {
   // Has to be initialized at BeginPlay(), instead of the class's constructor.
-  ERHIFeatureLevel::Type shader_feature_level_test = GetWorld()->Scene->GetFeatureLevel();
+  //ERHIFeatureLevel::Type shader_feature_level_test = GetWorld()->Scene->GetFeatureLevel();
+  ERHIFeatureLevel::Type shader_feature_level_test = GMaxRHIFeatureLevel;
   UE_LOG(LogTemp, Warning, TEXT("Shader Feature Level: %d"), shader_feature_level_test);
   UE_LOG(LogTemp, Warning, TEXT("Max Shader Feature Level: %d"), GMaxRHIFeatureLevel);
 
@@ -84,12 +85,15 @@ void ATestComputeShaderActor::InitializeOffsetYZ(
   offset_.Y = y;
   offset_.Z = z;
 
-  ENQUEUE_UNIQUE_RENDER_COMMAND_THREEPARAMETER(InitializeOffsetYZCommand,
-    ATestComputeShaderActor*, compute_shader_actor, this,
-    const float, y, y, // The same parameter name seems to have no problem?
-    const float, z, z, {
+  // ENQUEUE_RENDER_COMMAND
+  ATestComputeShaderActor* compute_shader_actor = this;
+
+  ENQUEUE_RENDER_COMMAND(InitializeOffsetYZCommand)(
+    [compute_shader_actor, y, z](FRHICommandListImmediate& RHICmdList)
+    {
       compute_shader_actor->InitializeOffsetYZ_RenderThread(y, z);
     });
+
   render_command_fence_.BeginFence();
   render_command_fence_.Wait();
 }
@@ -127,13 +131,18 @@ bool ATestComputeShaderActor::Calculate(
   output.SetNum(num_input_);
   offset_.X = x;
 
-  ENQUEUE_UNIQUE_RENDER_COMMAND_FOURPARAMETER(CalculateCommand,
-    ATestComputeShaderActor*, compute_shader_actor, this,
-    const FVector, offset, offset_,
-    const bool, yz_updated, false,
-    TArray<FVector>*, output, &output, {
-      compute_shader_actor->Calculate_RenderThread(offset, yz_updated, output);
+  // ENQUEUE_RENDER_COMMAND
+  ATestComputeShaderActor* compute_shader_actor = this;
+  const FVector offset = offset_;
+  const bool yz_updated = false;
+  TArray<FVector>* outputCmd = &output;
+
+  ENQUEUE_RENDER_COMMAND(CalculateCommand)(
+    [compute_shader_actor, offset, yz_updated, outputCmd](FRHICommandListImmediate& RHICmdList)
+    {
+      compute_shader_actor->Calculate_RenderThread(offset, yz_updated, outputCmd);
     });
+
   render_command_fence_.BeginFence();
   render_command_fence_.Wait(); // Waits for pending fence commands to retire.
 
@@ -157,13 +166,18 @@ bool ATestComputeShaderActor::Calculate_YZ_updated(
   output.SetNum(num_input_);
   offset_.Set(x, y, z);
 
-  ENQUEUE_UNIQUE_RENDER_COMMAND_FOURPARAMETER(CalculateCommand,
-    ATestComputeShaderActor*, compute_shader_actor, this,
-    const FVector, offset, offset_,
-    const bool, yz_updated, true,
-    TArray<FVector>*, output, &output, {
-      compute_shader_actor->Calculate_RenderThread(offset, yz_updated, output);
+  // ENQUEUE_RENDER_COMMAND
+  ATestComputeShaderActor* compute_shader_actor = this;
+  const FVector offset = offset_;
+  const bool yz_updated = true;
+  TArray<FVector>* outputCmd = &output;
+
+  ENQUEUE_RENDER_COMMAND(CalculateCommand)(
+    [compute_shader_actor, offset, yz_updated, outputCmd](FRHICommandListImmediate& RHICmdList)
+    {
+      compute_shader_actor->Calculate_RenderThread(offset, yz_updated, outputCmd);
     });
+
   render_command_fence_.BeginFence();
   render_command_fence_.Wait();
 

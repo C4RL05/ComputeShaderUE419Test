@@ -7,15 +7,12 @@
 #include "Interfaces/IPluginManager.h"
 #include "Logging/LogMacros.h"
 #include "Misc/Paths.h"
+#include <ShaderCore.h>
 
 void FComputeShaderTest419Module::StartupModule()
 {
-
-#if (ENGINE_MINOR_VERSION >= 21)    
 	FString ShaderDirectory = FPaths::Combine(FPaths::ProjectDir(), TEXT("Shaders"));
 	AddShaderSourceDirectoryMapping("/Project", ShaderDirectory);
-#endif
-
 }
 
 void FComputeShaderTest419Module::ShutdownModule()

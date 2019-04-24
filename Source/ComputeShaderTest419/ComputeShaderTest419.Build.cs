@@ -9,8 +9,10 @@ public class ComputeShaderTest419 : ModuleRules
 	public ComputeShaderTest419(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "ShaderCore", "RenderCore", "RHI" });
+
+		PrivatePCHHeaderFile = "ComputeShaderTest419.h";
+
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "RenderCore", "RHI" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 

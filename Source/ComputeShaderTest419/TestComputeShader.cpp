@@ -7,7 +7,7 @@
 //#include "RHIStaticStates.h"
 
 // xxx of TEXT("xxx") has to be the same variable name of the corresponding global shader.
-IMPLEMENT_UNIFORM_BUFFER_STRUCT(OffsetYZ, TEXT("offset_yz"))
+IMPLEMENT_GLOBAL_SHADER_PARAMETER_STRUCT(OffsetYZ, "offset_yz");
 
 FTestComputeShader::FTestComputeShader(const ShaderMetaType::CompiledShaderInitializerType& Initializer) : FGlobalShader(Initializer) {
   offset_x_.Bind(Initializer.ParameterMap, TEXT("test_offset_x"), SPF_Mandatory);
