@@ -12,8 +12,9 @@
 #include "TestComputeShaderActor.generated.h"
 
 UCLASS()
-class COMPUTESHADERTEST419_API ATestComputeShaderActor : public AActor {
-  GENERATED_BODY()
+class ATestComputeShaderActor : public AActor {
+
+	GENERATED_BODY()
 
 public:
   // Sets default values for this actor's properties

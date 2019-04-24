@@ -12,8 +12,8 @@
 // The first "F", like "FStruct" is not necessary for uniform buffer struct??
 // The struct has to be implemented in .cpp using IMPLEMENT_UNIFORM_BUFFER_STRUCT
 BEGIN_UNIFORM_BUFFER_STRUCT(OffsetYZ, )
-DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(float, y)
-DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(float, z)
+UNIFORM_MEMBER(float, y)
+UNIFORM_MEMBER(float, z)
 END_UNIFORM_BUFFER_STRUCT(OffsetYZ)
 
 class /*COMPUTESHADERTEST419_API*/ FTestComputeShader : public FGlobalShader {
