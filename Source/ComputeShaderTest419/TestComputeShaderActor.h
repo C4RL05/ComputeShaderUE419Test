@@ -17,77 +17,67 @@ class ATestComputeShaderActor : public AActor {
 	GENERATED_BODY()
 
 public:
-  // Sets default values for this actor's properties
-  ATestComputeShaderActor();
+	// Sets default values for this actor's properties
+	ATestComputeShaderActor();
 
 protected:
-  // Called when the game starts or when spawned
-  virtual void BeginPlay() override;
+	// Called when the game starts or when spawned
+	virtual void BeginPlay() override;
 
-  virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 public:
-  // Called every frame
-  virtual void Tick(float DeltaTime) override;
+	// Called every frame
+	virtual void Tick(float DeltaTime) override;
 
-  UFUNCTION(BlueprintCallable, Category = "TestComputeShader")
-    bool InitializeInputPositions(
-      /*  input */const TArray<FVector>& input_positions);
+	UFUNCTION(BlueprintCallable, Category = "TestComputeShader")
+		bool InitializeInputPositions(const TArray<FVector>& input_positions);
 
-  UFUNCTION(BlueprintCallable, Category = "TestComputeShader")
-    bool InitializeInputScalars(
-      /*  input */const TArray<float>& input_scalars);
+	UFUNCTION(BlueprintCallable, Category = "TestComputeShader")
+		bool InitializeInputScalars(const TArray<float>& input_scalars);
 
-  UFUNCTION(BlueprintCallable, Category = "TestComputeShader")
-    void InitializeOffsetYZ(
-      /*  input */const float y, const float z);
+	UFUNCTION(BlueprintCallable, Category = "TestComputeShader")
+		void InitializeOffsetYZ(const float y, const float z);
 
-  UFUNCTION(BlueprintCallable, Category = "TestComputeShader")
-    bool Calculate(
-      /*  input */const float x,
-      /* output */TArray<FVector>& output);
+	UFUNCTION(BlueprintCallable, Category = "TestComputeShader")
+		bool Calculate(const float x, TArray<FVector>& output);
 
-  UFUNCTION(BlueprintCallable, Category = "TestComputeShader")
-    bool Calculate_YZ_updated(
-      /*  input */const float x, const float y, const float z,
-      /* output */TArray<FVector>& output);
+	UFUNCTION(BlueprintCallable, Category = "TestComputeShader")
+		bool Calculate_YZ_updated(const float x, const float y, const float z, TArray<FVector>& output);
 
 
 private:
-  int32 num_input_ = 0;
-  FVector offset_;
+	int32 num_input_ = 0;
+	FVector offset_;
 
-  FRenderCommandFence render_command_fence_; // Necessary for waiting until a render command function finishes.
-  const TShaderMap<FGlobalShaderType>* shader_map = GetGlobalShaderMap(GMaxRHIFeatureLevel);
-  //Note:
-  // GetWorld() function cannot be called from constructor, can be called after BeginPlay() instead.
-  // So I used GMaxRHIFeatureLevel, instead of GetWorld()->Scene->GetFeatureLevel().
-  //const TShaderMap<FTestComputeShader::ShaderMetaType>* shader_map = GetGlobalShaderMap(GetWorld()->Scene->GetFeatureLevel());
+	FRenderCommandFence m_RenderCommandFence; // Necessary for waiting until a render command function finishes.
+	const TShaderMap<FGlobalShaderType>* shader_map = GetGlobalShaderMap(GMaxRHIFeatureLevel);
+	//Note:
+	// GetWorld() function cannot be called from constructor, can be called after BeginPlay() instead.
+	// So I used GMaxRHIFeatureLevel, instead of GetWorld()->Scene->GetFeatureLevel().
+	//const TShaderMap<FTestComputeShader::ShaderMetaType>* shader_map = GetGlobalShaderMap(GetWorld()->Scene->GetFeatureLevel());
 
-  //// Get the actual shader instance off the ShaderMap
-  //TShaderMapRef<FTestComputeShader> test_compute_shader_{ shader_map }; // Note: test_compute_shader_(shader_map) causes error.
+	//// Get the actual shader instance off the ShaderMap
+	//TShaderMapRef<FTestComputeShader> test_compute_shader_{ shader_map }; // Note: test_compute_shader_(shader_map) causes error.
 
-  TResourceArray<FVector> input_positions_RA_;
-  FRHIResourceCreateInfo input_positions_resource_;
-  FStructuredBufferRHIRef input_positions_buffer_;
-  FShaderResourceViewRHIRef input_positions_SRV_;
+	TResourceArray<FVector> m_InputPositionsRA;
+	FRHIResourceCreateInfo m_InputPositionsResource;
+	FStructuredBufferRHIRef m_InputPositionsBuffer;
+	FShaderResourceViewRHIRef m_InputPositionsSRV;
 
-  TResourceArray<float> input_scalars_RA_;
-  FRHIResourceCreateInfo input_scalars_resource_;
-  FStructuredBufferRHIRef input_scalars_buffer_;
-  FShaderResourceViewRHIRef input_scalars_SRV_;
+	TResourceArray<float> m_InputScalarsRA;
+	FRHIResourceCreateInfo m_InputScalarsResource;
+	FStructuredBufferRHIRef m_InputScalarsBuffer;
+	FShaderResourceViewRHIRef m_InputScalarsSRV;
 
-  TResourceArray<FVector> output_RA_; // Not necessary.
-  FRHIResourceCreateInfo output_resource_;
-  FStructuredBufferRHIRef output_buffer_;
-  FUnorderedAccessViewRHIRef output_UAV_;
+	TResourceArray<FVector> m_OutputRA; // Not necessary.
+	FRHIResourceCreateInfo m_OutputResource;
+	FStructuredBufferRHIRef m_OutputBuffer;
+	FUnorderedAccessViewRHIRef m_OutputUAV;
 
-  void InitializeOffsetYZ_RenderThread(
-    /*  input */const float y, const float z);
+	void InitializeOffsetYZ_RenderThread(const float y, const float z);
 
-  void Calculate_RenderThread(
-    /*  input */const FVector xyz, const bool yz_updated,
-    /* output */TArray<FVector>* output);
+	void Calculate_RenderThread(const FVector xyz, const bool yz_updated, TArray<FVector>* output);
 
-  void PrintResult(const TArray<FVector>& output);
+	void PrintResult(const TArray<FVector>& output);
 };

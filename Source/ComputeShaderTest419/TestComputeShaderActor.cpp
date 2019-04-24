@@ -5,230 +5,249 @@
 #include "TestComputeShaderActor.h"
 
 // Sets default values
-ATestComputeShaderActor::ATestComputeShaderActor() {
-  // Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-  PrimaryActorTick.bCanEverTick = true;
+ATestComputeShaderActor::ATestComputeShaderActor()
+{
+	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	PrimaryActorTick.bCanEverTick = true;
 }
+
 
 // Called when the game starts or when spawned
-void ATestComputeShaderActor::BeginPlay() {
-  // Has to be initialized at BeginPlay(), instead of the class's constructor.
-  //ERHIFeatureLevel::Type shader_feature_level_test = GetWorld()->Scene->GetFeatureLevel();
-  ERHIFeatureLevel::Type shader_feature_level_test = GMaxRHIFeatureLevel;
-  UE_LOG(LogTemp, Warning, TEXT("Shader Feature Level: %d"), shader_feature_level_test);
-  UE_LOG(LogTemp, Warning, TEXT("Max Shader Feature Level: %d"), GMaxRHIFeatureLevel);
+void ATestComputeShaderActor::BeginPlay()
+{
+	// Has to be initialized at BeginPlay(), instead of the class's constructor.
 
-  Super::BeginPlay();
+	//ERHIFeatureLevel::Type shader_feature_level_test = GetWorld()->Scene->GetFeatureLevel();
+	ERHIFeatureLevel::Type shader_feature_level_test = GMaxRHIFeatureLevel;
+
+	UE_LOG(LogTemp, Warning, TEXT("Shader Feature Level: %d"), shader_feature_level_test);
+	UE_LOG(LogTemp, Warning, TEXT("Max Shader Feature Level: %d"), GMaxRHIFeatureLevel);
+
+	Super::BeginPlay();
 }
 
-void ATestComputeShaderActor::EndPlay(const EEndPlayReason::Type EndPlayReason) {
-  // I'm not sure where is the appropriate place to call the following SafeRelease methods.
-  // Destructor? EndPlay? BeginDestroy??
-  input_positions_buffer_.SafeRelease();
-  input_positions_SRV_.SafeRelease();
 
-  input_scalars_buffer_.SafeRelease();
-  input_scalars_SRV_.SafeRelease();
+void ATestComputeShaderActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	// I'm not sure where is the appropriate place to call the following SafeRelease methods.
+	// Destructor? EndPlay? BeginDestroy??
+	m_InputPositionsBuffer.SafeRelease();
+	m_InputPositionsSRV.SafeRelease();
 
-  output_buffer_.SafeRelease();
-  output_UAV_.SafeRelease();
+	m_InputScalarsBuffer.SafeRelease();
+	m_InputScalarsSRV.SafeRelease();
 
-  Super::EndPlay(EndPlayReason);
+	m_OutputBuffer.SafeRelease();
+	m_OutputUAV.SafeRelease();
+
+	Super::EndPlay(EndPlayReason);
 }
+
 
 // Called every frame
-void ATestComputeShaderActor::Tick(float DeltaTime) {
-  Super::Tick(DeltaTime);
+void ATestComputeShaderActor::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
 }
 
-bool ATestComputeShaderActor::InitializeInputPositions(
-  /*  input */const TArray<FVector>& input_positions) {
-  if (input_positions.Num() == 0) {
-    UE_LOG(LogTemp, Warning, TEXT("Error: input_positions is empty at ATestComputeShaderActor::InitializeInputPosition."));
-    return false;
-  }
-  num_input_ = input_positions.Num();
+// ____________________________________
 
-  // We need to copy TArray to TResourceArray to set RHICreateStructuredBuffer.
-  input_positions_RA_.SetNum(num_input_);
-  FMemory::Memcpy(input_positions_RA_.GetData(), input_positions.GetData(), sizeof(FVector) * num_input_);
+bool ATestComputeShaderActor::InitializeInputPositions(const TArray<FVector>& input_positions)
+{
+	if (input_positions.Num() == 0) {
+		UE_LOG(LogTemp, Warning, TEXT("Error: input_positions is empty at ATestComputeShaderActor::InitializeInputPosition."));
+		return false;
+	}
 
-  input_positions_resource_.ResourceArray = &input_positions_RA_;
-  // Note: In D3D11StructuredBuffer.cpp, ResourceArray->Discard() function is called, but not discarded??
-  input_positions_buffer_ = RHICreateStructuredBuffer(sizeof(FVector), sizeof(FVector) * num_input_, BUF_ShaderResource, input_positions_resource_);
-  input_positions_SRV_ = RHICreateShaderResourceView(input_positions_buffer_);
-  return true;
+	num_input_ = input_positions.Num();
+
+	// We need to copy TArray to TResourceArray to set RHICreateStructuredBuffer.
+	m_InputPositionsRA.SetNum(num_input_);
+	FMemory::Memcpy(m_InputPositionsRA.GetData(), input_positions.GetData(), sizeof(FVector) * num_input_);
+
+	m_InputPositionsResource.ResourceArray = &m_InputPositionsRA;
+
+	// Note: In D3D11StructuredBuffer.cpp, ResourceArray->Discard() function is called, but not discarded??
+	m_InputPositionsBuffer = RHICreateStructuredBuffer(sizeof(FVector), sizeof(FVector) * num_input_, BUF_ShaderResource, m_InputPositionsResource);
+	m_InputPositionsSRV = RHICreateShaderResourceView(m_InputPositionsBuffer);
+
+	return true;
 }
 
-bool ATestComputeShaderActor::InitializeInputScalars(
-  /*  input */const TArray<float>& input_scalars) {
-  if (input_scalars.Num() == 0) {
-    UE_LOG(LogTemp, Warning, TEXT("Error: input_scalars is empty at ATestComputeShaderActor::InitializeInputScalar."));
-    return false;
-  }
-  if (input_scalars.Num() != num_input_) {
-    UE_LOG(LogTemp, Warning, TEXT("Error: input_scalars and input_positions do not have the same elements at ATestComputeShaderActor::InitializeInputScalar."));
-    return false;
-  }
 
-  input_scalars_RA_.SetNum(num_input_);
-  FMemory::Memcpy(input_scalars_RA_.GetData(), input_scalars.GetData(), sizeof(float) * num_input_);
+bool ATestComputeShaderActor::InitializeInputScalars(const TArray<float>& input_scalars)
+{
+	if (input_scalars.Num() == 0) {
+		UE_LOG(LogTemp, Warning, TEXT("Error: input_scalars is empty at ATestComputeShaderActor::InitializeInputScalar."));
+		return false;
+	}
+	if (input_scalars.Num() != num_input_) {
+		UE_LOG(LogTemp, Warning, TEXT("Error: input_scalars and input_positions do not have the same elements at ATestComputeShaderActor::InitializeInputScalar."));
+		return false;
+	}
 
-  input_scalars_resource_.ResourceArray = &input_scalars_RA_;
-  input_scalars_buffer_ = RHICreateStructuredBuffer(sizeof(float), sizeof(float) * num_input_, BUF_ShaderResource, input_scalars_resource_);
-  input_scalars_SRV_ = RHICreateShaderResourceView(input_scalars_buffer_);
-  return true;
+	m_InputScalarsRA.SetNum(num_input_);
+	FMemory::Memcpy(m_InputScalarsRA.GetData(), input_scalars.GetData(), sizeof(float) * num_input_);
+
+	m_InputScalarsResource.ResourceArray = &m_InputScalarsRA;
+	m_InputScalarsBuffer = RHICreateStructuredBuffer(sizeof(float), sizeof(float) * num_input_, BUF_ShaderResource, m_InputScalarsResource);
+	m_InputScalarsSRV = RHICreateShaderResourceView(m_InputScalarsBuffer);
+	return true;
 }
 
-void ATestComputeShaderActor::InitializeOffsetYZ(
-  /*  input */const float y, const float z) {
-  offset_.Y = y;
-  offset_.Z = z;
 
-  // ENQUEUE_RENDER_COMMAND
-  ATestComputeShaderActor* compute_shader_actor = this;
+void ATestComputeShaderActor::InitializeOffsetYZ(const float y, const float z)
+{
+	offset_.Y = y;
+	offset_.Z = z;
 
-  ENQUEUE_RENDER_COMMAND(InitializeOffsetYZCommand)(
-    [compute_shader_actor, y, z](FRHICommandListImmediate& RHICmdList)
-    {
-      compute_shader_actor->InitializeOffsetYZ_RenderThread(y, z);
-    });
+	// ENQUEUE_RENDER_COMMAND
+	ATestComputeShaderActor* compute_shader_actor = this;
 
-  render_command_fence_.BeginFence();
-  render_command_fence_.Wait();
+	ENQUEUE_RENDER_COMMAND(InitializeOffsetYZCommand)(
+		[compute_shader_actor, y, z](FRHICommandListImmediate& RHICmdList)
+	{
+		compute_shader_actor->InitializeOffsetYZ_RenderThread(y, z);
+	});
+
+	m_RenderCommandFence.BeginFence();
+	m_RenderCommandFence.Wait();
 }
 
-void ATestComputeShaderActor::InitializeOffsetYZ_RenderThread(
-  /*  input */const float y, const float z) {
-  check(IsInRenderingThread());
 
-  // Get global RHI command list
-  FRHICommandListImmediate& rhi_command_list = GRHICommandList.GetImmediateCommandList();
+void ATestComputeShaderActor::InitializeOffsetYZ_RenderThread(const float y, const float z)
+{
+	check(IsInRenderingThread());
 
-  // Get the actual shader instance off the ShaderMap
-  TShaderMapRef<FTestComputeShader> test_compute_shader_(shader_map);
+	// Get global RHI command list
+	FRHICommandListImmediate& rhi_command_list = GRHICommandList.GetImmediateCommandList();
 
-  rhi_command_list.SetComputeShader(test_compute_shader_->GetComputeShader());
-  test_compute_shader_->SetOffsetYZ(rhi_command_list, y, z);
+	// Get the actual shader instance off the ShaderMap
+	TShaderMapRef<FTestComputeShader> test_compute_shader_(shader_map);
+
+	rhi_command_list.SetComputeShader(test_compute_shader_->GetComputeShader());
+	test_compute_shader_->SetOffsetYZ(rhi_command_list, y, z);
 }
+
 
 // According to some result, UniformBuffer does not seem to be kept saved even if UniformBuffer_MultiFrame flag is set...
-bool ATestComputeShaderActor::Calculate(
-  /*  input */const float x,
-  /* output */TArray<FVector>& output) {
+bool ATestComputeShaderActor::Calculate( const float x, TArray<FVector>& output)
+{
+	if ((num_input_ == 0) || (m_InputPositionsRA.Num() != m_InputScalarsRA.Num())) {
+		UE_LOG(LogTemp, Warning, TEXT("Error: input_positions or input_scalars have not been set correctly at ATestComputeShaderActor::Calculate."));
+		return false;
+	}
 
-  if ((num_input_ == 0) || (input_positions_RA_.Num() != input_scalars_RA_.Num())) {
-    UE_LOG(LogTemp, Warning, TEXT("Error: input_positions or input_scalars have not been set correctly at ATestComputeShaderActor::Calculate."));
-    return false;
-  }
+	// In this sample code, output_buffer_ has not input values, so what we need here is just the pointer to output_resource_.
+	//output_RA_.SetNum(num_input_);
+	//output_resource_.ResourceArray = &output_RA_;
+	m_OutputBuffer = RHICreateStructuredBuffer(sizeof(FVector), sizeof(FVector) * num_input_, BUF_ShaderResource | BUF_UnorderedAccess, m_OutputResource);
+	m_OutputUAV = RHICreateUnorderedAccessView(m_OutputBuffer, /* bool bUseUAVCounter */ false, /* bool bAppendBuffer */ false);
 
-  // In this sample code, output_buffer_ has not input values, so what we need here is just the pointer to output_resource_.
-  //output_RA_.SetNum(num_input_);
-  //output_resource_.ResourceArray = &output_RA_;
-  output_buffer_ = RHICreateStructuredBuffer(sizeof(FVector), sizeof(FVector) * num_input_, BUF_ShaderResource | BUF_UnorderedAccess, output_resource_);
-  output_UAV_ = RHICreateUnorderedAccessView(output_buffer_, /* bool bUseUAVCounter */ false, /* bool bAppendBuffer */ false);
+	output.SetNum(num_input_);
+	offset_.X = x;
 
-  output.SetNum(num_input_);
-  offset_.X = x;
+	// ENQUEUE_RENDER_COMMAND
+	ATestComputeShaderActor* compute_shader_actor = this;
+	const FVector offset = offset_;
+	const bool yz_updated = false;
+	TArray<FVector>* outputCmd = &output;
 
-  // ENQUEUE_RENDER_COMMAND
-  ATestComputeShaderActor* compute_shader_actor = this;
-  const FVector offset = offset_;
-  const bool yz_updated = false;
-  TArray<FVector>* outputCmd = &output;
+	ENQUEUE_RENDER_COMMAND(CalculateCommand)(
+		[compute_shader_actor, offset, yz_updated, outputCmd](FRHICommandListImmediate& RHICmdList)
+	{
+		compute_shader_actor->Calculate_RenderThread(offset, yz_updated, outputCmd);
+	});
 
-  ENQUEUE_RENDER_COMMAND(CalculateCommand)(
-    [compute_shader_actor, offset, yz_updated, outputCmd](FRHICommandListImmediate& RHICmdList)
-    {
-      compute_shader_actor->Calculate_RenderThread(offset, yz_updated, outputCmd);
-    });
+	m_RenderCommandFence.BeginFence();
+	m_RenderCommandFence.Wait(); // Waits for pending fence commands to retire.
 
-  render_command_fence_.BeginFence();
-  render_command_fence_.Wait(); // Waits for pending fence commands to retire.
+	UE_LOG(LogTemp, Warning, TEXT("===== Calculate ====="));
+	PrintResult(output);
 
-  UE_LOG(LogTemp, Warning, TEXT("===== Calculate ====="));
-  PrintResult(output);
-  return true;
+	return true;
 }
 
-bool ATestComputeShaderActor::Calculate_YZ_updated(
-  /*  input */const float x, const float y, const float z,
-  /* output */TArray<FVector>& output) {
 
-  if ((num_input_ == 0) || (input_positions_RA_.Num() != input_scalars_RA_.Num())) {
-    UE_LOG(LogTemp, Warning, TEXT("Error: input_positions or input_scalars have not been set correctly at ATestComputeShaderActor::Calculate."));
-    return false;
-  }
+bool ATestComputeShaderActor::Calculate_YZ_updated(const float x, const float y, const float z, TArray<FVector>& output)
+{
+	if ((num_input_ == 0) || (m_InputPositionsRA.Num() != m_InputScalarsRA.Num())) {
+		UE_LOG(LogTemp, Warning, TEXT("Error: input_positions or input_scalars have not been set correctly at ATestComputeShaderActor::Calculate."));
+		return false;
+	}
 
-  output_buffer_ = RHICreateStructuredBuffer(sizeof(FVector), sizeof(FVector) * num_input_, BUF_ShaderResource | BUF_UnorderedAccess, output_resource_);
-  output_UAV_ = RHICreateUnorderedAccessView(output_buffer_, /* bool bUseUAVCounter */ false, /* bool bAppendBuffer */ false);
+	m_OutputBuffer = RHICreateStructuredBuffer(sizeof(FVector), sizeof(FVector) * num_input_, BUF_ShaderResource | BUF_UnorderedAccess, m_OutputResource);
+	m_OutputUAV = RHICreateUnorderedAccessView(m_OutputBuffer, /* bool bUseUAVCounter */ false, /* bool bAppendBuffer */ false);
 
-  output.SetNum(num_input_);
-  offset_.Set(x, y, z);
+	output.SetNum(num_input_);
+	offset_.Set(x, y, z);
 
-  // ENQUEUE_RENDER_COMMAND
-  ATestComputeShaderActor* compute_shader_actor = this;
-  const FVector offset = offset_;
-  const bool yz_updated = true;
-  TArray<FVector>* outputCmd = &output;
+	// ENQUEUE_RENDER_COMMAND
+	ATestComputeShaderActor* compute_shader_actor = this;
+	const FVector offset = offset_;
+	const bool yz_updated = true;
+	TArray<FVector>* outputCmd = &output;
 
-  ENQUEUE_RENDER_COMMAND(CalculateCommand)(
-    [compute_shader_actor, offset, yz_updated, outputCmd](FRHICommandListImmediate& RHICmdList)
-    {
-      compute_shader_actor->Calculate_RenderThread(offset, yz_updated, outputCmd);
-    });
+	ENQUEUE_RENDER_COMMAND(CalculateCommand)(
+		[compute_shader_actor, offset, yz_updated, outputCmd](FRHICommandListImmediate& RHICmdList)
+	{
+		compute_shader_actor->Calculate_RenderThread(offset, yz_updated, outputCmd);
+	});
 
-  render_command_fence_.BeginFence();
-  render_command_fence_.Wait();
+	m_RenderCommandFence.BeginFence();
+	m_RenderCommandFence.Wait();
 
-  UE_LOG(LogTemp, Warning, TEXT("===== Calculate_YZ_Updated ====="));
-  PrintResult(output);
-  return true;
+	UE_LOG(LogTemp, Warning, TEXT("===== Calculate_YZ_Updated ====="));
+	PrintResult(output);
+
+	return true;
 }
 
-void ATestComputeShaderActor::Calculate_RenderThread(
-  /*  input */const FVector xyz, const bool yz_updated,
-  /* output */TArray<FVector>* output) {
-  check(IsInRenderingThread());
 
-  // Get global RHI command list
-  FRHICommandListImmediate& rhi_command_list = GRHICommandList.GetImmediateCommandList();
+void ATestComputeShaderActor::Calculate_RenderThread(const FVector xyz, const bool yz_updated,TArray<FVector>* output)
+{
+	check(IsInRenderingThread());
 
-  // Get the actual shader instance off the ShaderMap
-  TShaderMapRef<FTestComputeShader> test_compute_shader_(shader_map);
+	// Get global RHI command list
+	FRHICommandListImmediate& rhi_command_list = GRHICommandList.GetImmediateCommandList();
 
-  rhi_command_list.SetComputeShader(test_compute_shader_->GetComputeShader());
-  test_compute_shader_->SetOffsetX(rhi_command_list, xyz.X);
-  if (yz_updated) {
-    test_compute_shader_->SetOffsetYZ(rhi_command_list, xyz.Y, xyz.Z);
-  }
-  test_compute_shader_->SetInputPosition(rhi_command_list, input_positions_SRV_);
-  test_compute_shader_->SetInputScalar(rhi_command_list, input_scalars_SRV_);
-  test_compute_shader_->SetOutput(rhi_command_list, output_UAV_);
+	// Get the actual shader instance off the ShaderMap
+	TShaderMapRef<FTestComputeShader> test_compute_shader_(shader_map);
 
-  DispatchComputeShader(rhi_command_list, *test_compute_shader_, num_input_, 1, 1);
+	rhi_command_list.SetComputeShader(test_compute_shader_->GetComputeShader());
+	test_compute_shader_->SetOffsetX(rhi_command_list, xyz.X);
+	if (yz_updated) {
+		test_compute_shader_->SetOffsetYZ(rhi_command_list, xyz.Y, xyz.Z);
+	}
+	test_compute_shader_->SetInputPosition(rhi_command_list, m_InputPositionsSRV);
+	test_compute_shader_->SetInputScalar(rhi_command_list, m_InputScalarsSRV);
+	test_compute_shader_->SetOutput(rhi_command_list, m_OutputUAV);
 
-  test_compute_shader_->ClearOutput(rhi_command_list);
-  test_compute_shader_->ClearParameters(rhi_command_list);
+	DispatchComputeShader(rhi_command_list, *test_compute_shader_, num_input_, 1, 1);
 
-  const FVector* shader_data = (const FVector*)rhi_command_list.LockStructuredBuffer(output_buffer_, 0, sizeof(FVector) * num_input_, EResourceLockMode::RLM_ReadOnly);
-  FMemory::Memcpy(output->GetData(), shader_data, sizeof(FVector) * num_input_);
-  // If you would like to get the partial data, (*output)[index] = *(shader_data + index) is more efficient??
+	test_compute_shader_->ClearOutput(rhi_command_list);
+	test_compute_shader_->ClearParameters(rhi_command_list);
 
-  //for (int32 index = 0; index < num_input_; ++index) {
-  //  (*output)[index] = *(shader_data + index);
-  //}
+	const FVector* shader_data = (const FVector*)rhi_command_list.LockStructuredBuffer(m_OutputBuffer, 0, sizeof(FVector) * num_input_, EResourceLockMode::RLM_ReadOnly);
+	FMemory::Memcpy(output->GetData(), shader_data, sizeof(FVector) * num_input_);
+	// If you would like to get the partial data, (*output)[index] = *(shader_data + index) is more efficient??
 
-  rhi_command_list.UnlockStructuredBuffer(output_buffer_);
+	//for (int32 index = 0; index < num_input_; ++index) {
+	//  (*output)[index] = *(shader_data + index);
+	//}
+
+	rhi_command_list.UnlockStructuredBuffer(m_OutputBuffer);
 }
+
 
 // TResourceArray's values are still alive...
-void ATestComputeShaderActor::PrintResult(const TArray<FVector>& output) {
-  for (int32 index = 0; index < num_input_; ++index) {
-    UE_LOG(LogTemp, Warning, TEXT("(%f, %f, %f) * %f + (%f, %f, %f) = (%f, %f, %f)"),
-      input_positions_RA_[index].X, input_positions_RA_[index].Y, input_positions_RA_[index].Z,
-      input_scalars_RA_[index],
-      offset_.X, offset_.Y, offset_.Z,
-      output[index].X, output[index].Y, output[index].Z);
-  }
+void ATestComputeShaderActor::PrintResult(const TArray<FVector>& output)
+{
+	for (int32 index = 0; index < num_input_; ++index) {
+		UE_LOG(LogTemp, Warning, TEXT("(%f, %f, %f) * %f + (%f, %f, %f) = (%f, %f, %f)"),
+			m_InputPositionsRA[index].X, m_InputPositionsRA[index].Y, m_InputPositionsRA[index].Z,
+			m_InputScalarsRA[index],
+			offset_.X, offset_.Y, offset_.Z,
+			output[index].X, output[index].Y, output[index].Z);
+	}
 }
