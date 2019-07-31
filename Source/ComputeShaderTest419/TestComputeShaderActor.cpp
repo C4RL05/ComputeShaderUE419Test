@@ -3,6 +3,9 @@
 // http://www.sciement.com/tech-blog/
 
 #include "TestComputeShaderActor.h"
+#include <GameFramework/Actor.h>
+#include <Engine/World.h>
+#include <SceneInterface.h>
 
 // Sets default values
 ATestComputeShaderActor::ATestComputeShaderActor()
@@ -103,11 +106,12 @@ void ATestComputeShaderActor::InitializeOffsetYZ(const float y, const float z)
 
 	// ENQUEUE_RENDER_COMMAND
 	ATestComputeShaderActor* compute_shader_actor = this;
+	UWorld* World = GetWorld();
 
 	ENQUEUE_RENDER_COMMAND(InitializeOffsetYZCommand)(
-		[compute_shader_actor, y, z](FRHICommandListImmediate& RHICmdList)
+		[compute_shader_actor, World, y, z](FRHICommandListImmediate& RHICmdList)
 	{
-		compute_shader_actor->InitializeOffsetYZ_RenderThread(y, z);
+		compute_shader_actor->InitializeOffsetYZ_RenderThread(World, y, z);
 	});
 
 	m_RenderCommandFence.BeginFence();
@@ -115,7 +119,7 @@ void ATestComputeShaderActor::InitializeOffsetYZ(const float y, const float z)
 }
 
 
-void ATestComputeShaderActor::InitializeOffsetYZ_RenderThread(const float y, const float z)
+void ATestComputeShaderActor::InitializeOffsetYZ_RenderThread(UWorld* World, const float y, const float z)
 {
 	check(IsInRenderingThread());
 
@@ -123,7 +127,9 @@ void ATestComputeShaderActor::InitializeOffsetYZ_RenderThread(const float y, con
 	FRHICommandListImmediate& rhi_command_list = GRHICommandList.GetImmediateCommandList();
 
 	// Get the actual shader instance off the ShaderMap
-	TShaderMapRef<FTestComputeShader> test_compute_shader_(shader_map);
+	ERHIFeatureLevel::Type FeatureLevel = World->Scene->GetFeatureLevel();
+	auto ShaderMap = GetGlobalShaderMap(FeatureLevel);
+	TShaderMapRef<FTestComputeShader> test_compute_shader_(ShaderMap);
 
 	rhi_command_list.SetComputeShader(test_compute_shader_->GetComputeShader());
 	test_compute_shader_->SetOffsetYZ(rhi_command_list, y, z);
@@ -152,18 +158,18 @@ bool ATestComputeShaderActor::Calculate( const float x, TArray<FVector>& output)
 	const FVector offset = offset_;
 	const bool yz_updated = false;
 	TArray<FVector>* outputCmd = &output;
+	UWorld* World = GetWorld();
 
 	ENQUEUE_RENDER_COMMAND(CalculateCommand)(
-		[compute_shader_actor, offset, yz_updated, outputCmd](FRHICommandListImmediate& RHICmdList)
+		[compute_shader_actor, World, offset, yz_updated, outputCmd](FRHICommandListImmediate& RHICmdList)
 	{
-		compute_shader_actor->Calculate_RenderThread(offset, yz_updated, outputCmd);
+		compute_shader_actor->Calculate_RenderThread(World, offset, yz_updated, outputCmd);
 	});
 
 	m_RenderCommandFence.BeginFence();
 	m_RenderCommandFence.Wait(); // Waits for pending fence commands to retire.
 
 	UE_LOG(LogTemp, Warning, TEXT("===== Calculate ====="));
-	PrintResult(output);
 
 	return true;
 }
@@ -187,24 +193,24 @@ bool ATestComputeShaderActor::Calculate_YZ_updated(const float x, const float y,
 	const FVector offset = offset_;
 	const bool yz_updated = true;
 	TArray<FVector>* outputCmd = &output;
+	UWorld* World = GetWorld();
 
 	ENQUEUE_RENDER_COMMAND(CalculateCommand)(
-		[compute_shader_actor, offset, yz_updated, outputCmd](FRHICommandListImmediate& RHICmdList)
+		[compute_shader_actor, World, offset, yz_updated, outputCmd](FRHICommandListImmediate& RHICmdList)
 	{
-		compute_shader_actor->Calculate_RenderThread(offset, yz_updated, outputCmd);
+		compute_shader_actor->Calculate_RenderThread(World, offset, yz_updated, outputCmd);
 	});
 
 	m_RenderCommandFence.BeginFence();
 	m_RenderCommandFence.Wait();
 
 	UE_LOG(LogTemp, Warning, TEXT("===== Calculate_YZ_Updated ====="));
-	PrintResult(output);
 
 	return true;
 }
 
 
-void ATestComputeShaderActor::Calculate_RenderThread(const FVector xyz, const bool yz_updated,TArray<FVector>* output)
+void ATestComputeShaderActor::Calculate_RenderThread(UWorld* World, const FVector xyz, const bool yz_updated,TArray<FVector>* output)
 {
 	check(IsInRenderingThread());
 
@@ -212,7 +218,9 @@ void ATestComputeShaderActor::Calculate_RenderThread(const FVector xyz, const bo
 	FRHICommandListImmediate& rhi_command_list = GRHICommandList.GetImmediateCommandList();
 
 	// Get the actual shader instance off the ShaderMap
-	TShaderMapRef<FTestComputeShader> test_compute_shader_(shader_map);
+	ERHIFeatureLevel::Type FeatureLevel = World->Scene->GetFeatureLevel();
+	auto ShaderMap = GetGlobalShaderMap(FeatureLevel);
+	TShaderMapRef<FTestComputeShader> test_compute_shader_(ShaderMap);
 
 	rhi_command_list.SetComputeShader(test_compute_shader_->GetComputeShader());
 	test_compute_shader_->SetOffsetX(rhi_command_list, xyz.X);
@@ -237,17 +245,4 @@ void ATestComputeShaderActor::Calculate_RenderThread(const FVector xyz, const bo
 	//}
 
 	rhi_command_list.UnlockStructuredBuffer(m_OutputBuffer);
-}
-
-
-// TResourceArray's values are still alive...
-void ATestComputeShaderActor::PrintResult(const TArray<FVector>& output)
-{
-	for (int32 index = 0; index < num_input_; ++index) {
-		UE_LOG(LogTemp, Warning, TEXT("(%f, %f, %f) * %f + (%f, %f, %f) = (%f, %f, %f)"),
-			m_InputPositionsRA[index].X, m_InputPositionsRA[index].Y, m_InputPositionsRA[index].Z,
-			m_InputScalarsRA[index],
-			offset_.X, offset_.Y, offset_.Z,
-			output[index].X, output[index].Y, output[index].Z);
-	}
 }

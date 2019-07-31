@@ -9,7 +9,11 @@
 #include "DynamicRHIResourceArray.h" // Core module
 #include "RenderCommandFence.h" // RenderCore module
 #include "TestComputeShader.h"
+#include <GlobalShader.h>
+#include "RHI.h"
 #include "TestComputeShaderActor.generated.h"
+
+class UWorld;
 
 UCLASS()
 class ATestComputeShaderActor : public AActor {
@@ -51,7 +55,7 @@ private:
 	FVector offset_;
 
 	FRenderCommandFence m_RenderCommandFence; // Necessary for waiting until a render command function finishes.
-	const TShaderMap<FGlobalShaderType>* shader_map = GetGlobalShaderMap(GMaxRHIFeatureLevel);
+//	const TShaderMap<FGlobalShaderType>* shader_map = GetGlobalShaderMap(GMaxRHIFeatureLevel);
 	//Note:
 	// GetWorld() function cannot be called from constructor, can be called after BeginPlay() instead.
 	// So I used GMaxRHIFeatureLevel, instead of GetWorld()->Scene->GetFeatureLevel().
@@ -75,9 +79,7 @@ private:
 	FStructuredBufferRHIRef m_OutputBuffer;
 	FUnorderedAccessViewRHIRef m_OutputUAV;
 
-	void InitializeOffsetYZ_RenderThread(const float y, const float z);
+	void InitializeOffsetYZ_RenderThread(UWorld* World, const float y, const float z);
 
-	void Calculate_RenderThread(const FVector xyz, const bool yz_updated, TArray<FVector>* output);
-
-	void PrintResult(const TArray<FVector>& output);
+	void Calculate_RenderThread(UWorld* World, const FVector xyz, const bool yz_updated, TArray<FVector>* output);
 };

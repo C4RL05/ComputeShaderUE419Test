@@ -4,7 +4,6 @@
 
 #include "ComputeShaderTest419.h"
 #include "Modules/ModuleManager.h"
-#include "Interfaces/IPluginManager.h"
 #include "Logging/LogMacros.h"
 #include "Misc/Paths.h"
 #include <ShaderCore.h>
